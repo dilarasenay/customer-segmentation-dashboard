@@ -1,0 +1,23 @@
+# Python bytecode dosyaları ve geçici dosyalar
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Sanal ortam (Virtual Environment)
+venv/
+env/
+
+# IDE ayarları (VS Code, PyCharm vb.)
+.vscode/
+.idea/
+
+# Modeller ve Scaler (Büyük dosyalar olduğu için genellikle dışarıda tutulur)
+models/*.pkl
+
+# Geçici kilit dosyaları (Excel kilitleri vb.)
+.~lock.*
+*.tmp
+
+# İşletim sistemi dosyaları
+.DS_Store
+Thumbs.db

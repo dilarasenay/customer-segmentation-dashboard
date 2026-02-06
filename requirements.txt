@@ -1,0 +1,10 @@
+# Veri işleme
+pandas
+numpy
+
+# Makine Öğrenmesi ve Scaling
+scikit-learn
+
+# Model ve Scaler kaydetme
+joblib
+
