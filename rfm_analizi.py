@@ -2,7 +2,7 @@ import pandas as pd
 import datetime as dt
 
 # 1. Veriyi Oku
-df = pd.read_csv("data/customers.csv")
+df = pd.read_csv("data/raw/customers.csv")
 
 # 2. Ön Hazırlık: Online ve Offline verileri birleştir
 df["total_order_num"] = df["order_num_total_ever_online"] + df["order_num_total_ever_offline"]
@@ -31,7 +31,7 @@ rfm["monetary_score"] = pd.qcut(rfm['monetary'], 5, labels=[1, 2, 3, 4, 5])
 rfm["RF_SCORE"] = (rfm['recency_score'].astype(str) + rfm['frequency_score'].astype(str))
 
 # 7. Sonucu Kaydet (Feature Scaling yapacak arkadaşın için)
-rfm.to_csv("data/customers_rfm.csv", index=False)
+rfm.to_csv("data/processed/customers_rfm.csv", index=False)
 
-print("İşlem Başarılı! RFM tablosu 'data/customers_rfm.csv' olarak kaydedildi.")
+print("İşlem Başarılı! RFM tablosu 'data/processed/customers_rfm.csv' olarak kaydedildi.")
 print(rfm.head())
