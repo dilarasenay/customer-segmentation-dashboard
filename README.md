@@ -1,1 +1,1 @@
-# customer-segmentation-dashboard
+# Customer-Segmentation-Dashboard
