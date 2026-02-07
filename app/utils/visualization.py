@@ -103,5 +103,3 @@ plt.ylabel('Harcama Skoru (Monetary)', fontsize=12)
 plt.grid(axis='y', linestyle='--', alpha=0.5)   #yatay çizgiler 
 plt.tight_layout()  #taşmayı üst üste binmeyi engellemek içindir.
 plt.show()
-
-df.to_csv('dashboard_data.csv', index=False)
