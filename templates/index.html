@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Müşteri Analiz Paneli (V2.0)</title>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/5.3.0/darkly/bootstrap.min.css" rel="stylesheet">
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+
+    <style>
+        .card:hover {
+            transform: translateY(-5px); /* 5 piksel yukarı kaydır */
+            transition: 0.3s ease;     /* Yumuşak geçiş yap */
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4); /* Gölge ekle */
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>Müşteri Segmentasyon Paneli
+            </a>
+            <span class="navbar-text text-white">
+                Hackathon 2026 | Veri Bilimi Ekibi
+            </span>
+        </div>
+    </nav>
+
+    <div class="container">
+        
+        <div class="row mb-4">
+            <div class="col-12 text-end">
+                <button type="button" class="btn btn-warning btn-lg shadow fw-bold" data-bs-toggle="modal" data-bs-target="#predictionModal">
+                    <i class="fas fa-microchip me-2"></i>Yeni Müşteri Simülasyonu
+                </button>
+            </div>
+        </div>
+
+        <div class="row text-center mb-4">
+            
+            <div class="col-md-4"> 
+                <div class="card text-white bg-info mb-3 shadow">
+                    <div class="card-header">Toplam Müşteri</div>
+                    <div class="card-body">
+                        <h2 class="card-title"><i class="fas fa-users me-2"></i>{{ sayi }}</h2>
+                        <p class="card-text text-muted">Aktif Veritabanı</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card text-white bg-success mb-3 shadow">
+                    <div class="card-header">Toplam Ciro</div>
+                    <div class="card-body">
+                        <h2 class="card-title"><i class="fas fa-wallet me-2"></i>{{ skor }}</h2>
+                        <p class="card-text text-muted">Genel Hasılat (Monetary)</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card text-white bg-warning mb-3 shadow">
+                    <div class="card-header">Lider Segment</div>
+                    <div class="card-body">
+                        <h2 class="card-title"><i class="fas fa-crown me-2"></i>{{ isim }}</h2>
+                        <p class="card-text text-muted">En Kalabalık Grup</p>
+                    </div>
+                </div>
+            </div>
+        </div> 
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card border-light mb-4 shadow">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-project-diagram me-2"></i>Müşteri Kümeleri (K-Means AI)</span>
+                        <span class="badge bg-danger">Yapay Zeka</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="kmeansChart" style="min-height: 400px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card border-light mb-4 shadow">
+                    <div class="card-header bg-dark text-white">
+                        <i class="fas fa-th-large me-2"></i>Segment Dağılımı
+                    </div>
+                    <div class="card-body">
+                        <div id="rfmChart" style="min-height: 400px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card border-light shadow">
+                    <div class="card-header bg-secondary text-white">
+                        <i class="fas fa-list me-2"></i>En Değerli 100 Müşteri (Top Revenue)
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-hover table-striped" id="musteriTablosu">
+                            <thead>
+                                <tr>
+                                    <th>Müşteri ID</th>
+                                    <th>Segment</th>
+                                    <th>Segment (Raw)</th>
+                                    <th>Harcama (Monetary)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for musteri in tablo_verisi %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">
+                                            #{{ 24000 + loop.index }}
+                                        </span>
+                                    </td>
+                                    
+                                    <td>
+                                        {% set seg = musteri.segment | lower %}
+                                        {% if 'champion' in seg or 'loyal' in seg %}
+                                            <span class="badge bg-success">
+                                                {{ musteri.segment.replace('_', ' ').title() }}
+                                            </span>
+                                        {% elif 'risk' in seg or 'lost' in seg or 'cant_loose' in seg %}
+                                            <span class="badge bg-danger">
+                                                {{ musteri.segment.replace('_', ' ').title() }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-info">
+                                                {{ musteri.segment.replace('_', ' ').title() }}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <td class="text-muted small">
+                                        {{ musteri.segment.replace('_', ' ').title() }}
+                                    </td>
+                                    
+                                    <td class="fw-bold text-success">{{ musteri.monetary }} ₺</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="modal fade" id="predictionModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-warning">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title"><i class="fas fa-robot me-2 text-warning"></i>Yapay Zeka Tahmini</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Yeni bir müşteri verisi girin, AI hangi segmente ait olduğunu bulsun.</p>
+                    
+                    <form id="predictionForm">
+                        <div class="mb-3">
+                            <label class="form-label">Recency (Kaç gün önce geldi?)</label>
+                            <input type="number" class="form-control bg-secondary text-white border-0" id="inputRecency" placeholder="Örn: 30" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Frequency (Kaç kere alışveriş yaptı?)</label>
+                            <input type="number" class="form-control bg-secondary text-white border-0" id="inputFrequency" placeholder="Örn: 5" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Monetary (Toplam ne kadar harcadı?)</label>
+                            <input type="number" class="form-control bg-secondary text-white border-0" id="inputMonetary" placeholder="Örn: 1500" required>
+                        </div>
+                    </form>
+                    
+                    <div id="resultArea" class="alert alert-success mt-3 d-none text-center">
+                        <h4 class="alert-heading fw-bold" id="resultTitle">Segment X</h4>
+                        <p class="mb-0" id="resultText">Analiz tamamlandı.</p>
+                    </div>
+
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="button" class="btn btn-warning fw-bold" onclick="makePrediction()">
+                        <i class="fas fa-magic me-2"></i>Analiz Et
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> 
+    
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script> 
+    
+    <script>
+        // --- A. VERİ AKTARIMI (PYTHON -> JAVASCRIPT) ---
+        // Jinja2'nin 'tojson' filtresi, Python verisini JS objesine çevirir.
+        // Bu veriler app.py'den geliyor.
+        
+        // 1. K-Means Verisi (Scatter Plot için)
+        const scatterSeries = {{ scatter_verisi | tojson }};
+        
+        // 2. RFM Verisi (Treemap için)
+        const treemapLabels = {{ grafik_etiketleri | tojson }};
+        const treemapValues = {{ grafik_verileri | tojson }};
+
+        // --- B. K-MEANS GRAFİĞİ (SCATTER PLOT) AYARLARI ---
+        var scatterOptions = {
+            series: scatterSeries, // Python'dan gelen veri buraya giriyor
+            chart: {
+                height: 400,
+                type: 'scatter', // Grafik tipi: Dağılım
+                zoom: { enabled: true, type: 'xy' }, // Kullanıcı zoom yapabilsin
+                toolbar: { show: true }
+            },
+            colors: ['#00E396', '#775DD0', '#FEB019', '#FF4560'], // Küme renkleri (Yeşil, Mor, Sarı, Kırmızı)
+            xaxis: {
+                title: { text: 'Toplam Harcama (TL)' },
+                tickAmount: 10,
+                labels: {
+                    formatter: function(val) { return parseFloat(val).toFixed(0) + "₺"; }
+                }
+            },
+
+            yaxis: {
+                title: { text: 'Alışveriş Sıklığı' },
+                tickAmount: 5,
+                labels: {
+                    formatter: function(val) {
+                        return val.toFixed(0); // Ondalıkları sil (50.0000 -> 50)
+                    }
+                }
+            },
+            // Noktaların şeffaflığını ayarlayalım ki üst üste binenler görünsün
+            fill: {
+                type: 'solid',
+                opacity: 0.6  // %60 görünürlük (Arka planı gösterir)
+            },
+            markers: {
+                size: 6, // Noktaları biraz büyüt
+            },
+
+            tooltip: {
+                y: {
+                    formatter: function(val) { return val + " kez"; }
+                }
+            },
+            title: {
+                text: 'Harcama vs Sıklık Analizi',
+                align: 'left',
+                style: { color: '#fff' }
+            }
+        };
+        // Grafiği çizdir
+        new ApexCharts(document.querySelector("#kmeansChart"), scatterOptions).render();
+
+        // --- C. RFM GRAFİĞİ (TREEMAP) AYARLARI ---
+        // Önce veriyi Treemap formatına çevirelim: [{x: 'Segment Adı', y: 500}, ...]
+        const treemapSeriesData = treemapLabels.map((label, index) => {
+            return { x: label, y: treemapValues[index] };
+        });
+
+        var treemapOptions = {
+            series: [{ data: treemapSeriesData }],
+            chart: {
+                height: 400,
+                type: 'treemap',
+                toolbar: { show: false }
+            },
+            colors: ['#3B93A5', '#F7B844', '#ADD8C7', '#EC3C65'], // Pastel renk paleti
+            title: {
+                text: 'Müşteri Segment Büyüklükleri',
+                align: 'center',
+                style: { color: '#fff' }
+            },
+            plotOptions: {
+                treemap: {
+                    distributed: true, // Her kutuya farklı renk ver
+                    enableShades: false
+                }
+            }
+        };
+        // Grafiği çizdir
+        new ApexCharts(document.querySelector("#rfmChart"), treemapOptions).render();
+
+        // --- D. TABLO AYARLARI (DATATABLES) ---
+        $(document).ready(function () {
+            $('#musteriTablosu').DataTable({
+                "language": { "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/tr.json" }, // Türkçe
+                "pageLength": 10, // Sayfada 10 satır göster
+                "dom": '<"row"<"col-sm-12 col-md-6"f><"col-sm-12 col-md-6"p>>t' // Sadece Arama ve Sayfalama
+            });
+        });
+
+        // --- E. TAHMİN FONKSİYONU (AI PREDICTION) ---
+        function makePrediction() {
+            // 1. Verileri Formdan Al
+            const recency = document.getElementById('inputRecency').value;
+            const frequency = document.getElementById('inputFrequency').value;
+            const monetary = document.getElementById('inputMonetary').value;
+
+            // Boş kontrolü
+            if(!recency || !frequency || !monetary) {
+                alert("Lütfen tüm alanları doldurun!");
+                return;
+            }
+
+            // 2. Python'a (Backend) Gönder
+            fetch('/api/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    recency: recency, 
+                    frequency: frequency, 
+                    monetary: monetary 
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 3. Sonucu Göster
+                const resultArea = document.getElementById('resultArea');
+                const resultTitle = document.getElementById('resultTitle');
+                
+                if (data.success) {
+                    resultArea.classList.remove('d-none', 'alert-danger');
+                    resultArea.classList.add('alert-success');
+                    
+                    // Küme ID'sini göster
+                    resultTitle.innerText = `Müşteri Segmenti: ${data.cluster}`;
+                    
+                    // İstersen buraya "Segment 0 = VIP" gibi bir açıklama da ekleyebiliriz
+                    // document.getElementById('resultText').innerText = "Bu müşteri sadık kitlesinde!";
+                } else {
+                    alert("Hata oluştu: " + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Sunucuyla iletişim hatası!");
+            });
+        }
+
+    </script>
+
+</body>
+</html>

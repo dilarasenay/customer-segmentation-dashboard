@@ -9,11 +9,11 @@ from app.utils.data_preprocessing import scale_rfm_features, save_scaler
 
 def main():
     # 1. Arkadaşından gelen dosyayı okuyoruz
-    input_path = 'data/raw/customers_rfm.csv'
+    input_path = 'data/processed/customers_rfm.csv'
     output_path = 'data/processed/rfm_scaled.csv'
     
     if not os.path.exists(input_path):
-        print(f"Hata: {input_path} dosyası bulunamadı. Lütfen dosyayı data/raw/ altına ekleyin.")
+        print(f"Hata: {input_path} dosyası bulunamadı. Lütfen dosyayı data/processed/ altına ekleyin.")
         return
 
     df = pd.read_csv(input_path)
