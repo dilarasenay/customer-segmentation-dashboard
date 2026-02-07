@@ -227,47 +227,69 @@
             chart: {
                 height: 400,
                 type: 'scatter', // Grafik tipi: Dağılım
-                zoom: { enabled: true, type: 'xy' }, // Kullanıcı zoom yapabilsin
-                toolbar: { show: true }
+                zoom: { enabled: true, type: 'xy',autoScaleYaxis: true }, // Kullanıcı zoom yapabilsin
+                toolbar: { show: true, tools: { zoomout: false, pan: true, reset: true,download: true, zoom: true } }
             },
-            colors: ['#00E396', '#775DD0', '#FEB019', '#FF4560'], // Küme renkleri (Yeşil, Mor, Sarı, Kırmızı)
+            colors: ['#00E396', '#775DD0', '#FEB019', '#FF4560'], // Canlı renkler
             xaxis: {
-                title: { text: 'Toplam Harcama (TL)' },
+                type: 'numeric',
                 tickAmount: 10,
                 labels: {
-                    formatter: function(val) { return parseFloat(val).toFixed(0) + "₺"; }
-                }
-            },
-
-            yaxis: {
-                title: { text: 'Alışveriş Sıklığı' },
-                tickAmount: 5,
-                labels: {
                     formatter: function(val) {
-                        return val.toFixed(0); // Ondalıkları sil (50.0000 -> 50)
+                        return parseFloat(val).toFixed(0) + " ₺";
+                    },
+                    style: {
+                        colors: '#ffffff', // <-- YAZILAR BEYAZ OLDU
+                        fontSize: '12px'
+                    }
+                },
+                title: {
+                    text: 'Toplam Harcama (Monetary)',
+                    style: {
+                        color: '#ffffff' // <-- BAŞLIK BEYAZ OLDU
                     }
                 }
             },
-            // Noktaların şeffaflığını ayarlayalım ki üst üste binenler görünsün
-            fill: {
-                type: 'solid',
-                opacity: 0.6  // %60 görünürlük (Arka planı gösterir)
-            },
-            markers: {
-                size: 6, // Noktaları biraz büyüt
-            },
+            yaxis: {
+                tickAmount: 7,
+                labels: {
 
-            tooltip: {
-                y: {
-                    formatter: function(val) { return val + " kez"; }
+                    // İŞTE SİHİRLİ KOD BURASI:
+                    formatter: function(val) {
+                        return parseFloat(val).toFixed(0); // Küsuratı at, tam sayı yap
+                    },
+                    style: {
+                        colors: '#ffffff', // <-- YAZILAR BEYAZ OLDU
+                        fontSize: '12px'
+                    }
+                },
+                title: {
+                    text: 'Alışveriş Sıklığı (Frequency)',
+                    style: {
+                        color: '#ffffff' // <-- BAŞLIK BEYAZ OLDU
+                    }
                 }
             },
-            title: {
-                text: 'Harcama vs Sıklık Analizi',
-                align: 'left',
-                style: { color: '#fff' }
+            legend: {
+                labels: {
+                    colors: '#ffffff' // <-- LEJANT (KUTUCUK İSİMLERİ) BEYAZ OLDU
+                }
+            },
+            grid: {
+                borderColor: '#404040' // Izgara çizgilerini de hafif gri yaptım, göz yormasın
+            },
+            tooltip: {
+                theme: 'dark',
+                y: {
+                    formatter: function(val) {
+                        return val.toFixed(0); // Kutucukta da tam sayı yazsın
+                    }
+                }
             }
         };
+
+        var chart = new ApexCharts(document.querySelector("#scatterChart"), scatterOptions);
+        chart.render();
         // Grafiği çizdir
         new ApexCharts(document.querySelector("#kmeansChart"), scatterOptions).render();
 
