@@ -455,25 +455,25 @@
             title: {
                 text: 'Segment Karakteristiği (Sıklık vs Geçen Gün)',
                 align: 'center',
-                style: { color: '#bbb' } 
+                style: { color: '#ffffff' } 
             },
             dataLabels: {
                 enabled: true,
                 enabledOnSeries: [1], // Sadece çizginin üzerinde rakam yazsın
-                style: { colors: ['#fff'] }
+                style: { colors: ['#000000'] }
             },
             labels: profileData.categories, // 4 Ana Küme İsmi
             xaxis: {
-                labels: { style: { colors: '#fff' } }
+                labels: { style: { colors: '#ffffff' } }
             },
             yaxis: [{
                 // SOL EKSEN (Frequency)
                 title: { 
                     text: 'Ortalama Alışveriş Adedi',
-                    style: { color: '#00E396' } 
+                    style: { color: '#ffffff' } 
                 },
                 labels: { 
-                    style: { colors: '#00E396' },
+                    style: { colors: '#ffffff' },
                     formatter: function(val) { return val.toFixed(1); }
                 }
             }, {
@@ -481,16 +481,16 @@
                 opposite: true, // Sağa yasla
                 title: { 
                     text: 'Son Görülme (Gün)', 
-                    style: { color: '#FEB019' } 
+                    style: { color: '#ffffff' } 
                 },
                 labels: { 
-                    style: { colors: '#FEB019' },
+                    style: { colors: '#ffffff' },
                     formatter: function(val) { return val.toFixed(0); }
                 }
             }],
             colors: ['#00E396', '#FEB019'], // Yeşil Sütun, Turuncu Çizgi
             legend: {
-                labels: { colors: '#fff' }
+                labels: { colors: '#ffffff' }
             },
             tooltip: {
                 theme: 'dark'
@@ -519,14 +519,15 @@
                     align: 'center',
                     style: { color: '#bbb' }
                 },
+                // Box Plot Ayarları İçinde
                 xaxis: {
-                    labels: { style: { colors: '#fff' } }
+                    labels: {
+                        style: { colors: '#ffffff' } // Alt eksen (Segmentler) beyaz
+                    }
                 },
                 yaxis: {
-                    forceNiceScale: true, // Boşluk sorununu çözer
-                    labels: { 
-                        style: { colors: '#fff' },
-                        formatter: function(val) { return val.toLocaleString() + " ₺"; }
+                    labels: {
+                        style: { colors: '#ffffff' } // Yan eksen (Paralar) beyaz
                     }
                 },
                 plotOptions: {
