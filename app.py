@@ -29,106 +29,172 @@ def get_data_path(filename):
 
 def get_rfm_data():
     """
-    RFM Analizi verilerini okur ve Dashboard KPI'ları için hazırlar.
-    Kaynak: data/processed/customers_rfm.csv
+    KPI Kartları ve Grafikler için veri hazırlar.
+    GÜNCELLEME: Profil grafiği (Sağdaki) artık ölçek sorunu olmaması için
+    4 ana kümeye (Cluster) göre hesaplanıyor.
     """
-    file_path = get_data_path('customers_rfm.csv')
+    rfm_path = get_data_path('customers_rfm.csv')
+    cluster_path = get_data_path('rfm_clustered.csv') # Küme verisini de okuyacağız
     
     try:
-        # Veri okuma
-        df = pd.read_csv(file_path)
-        
-        # Sütun isim standardizasyonu (Case-insensitive işlem için)
+        # 1. Ana Veriyi Oku (KPI ve Ciro için)
+        df = pd.read_csv(rfm_path)
         df.columns = df.columns.str.lower()
         
         # --- KPI Hesaplamaları ---
         total_customers = len(df)
-        
-        # Ciro Hesaplama (Monetary)
-        if 'monetary' in df.columns:
-            total_revenue = df['monetary'].sum()
-            revenue_formatted = f"{total_revenue:,.0f} ₺"
-        else:
-            revenue_formatted = "Veri Yok"
+        total_revenue = df['monetary'].sum() if 'monetary' in df.columns else 0
+        revenue_formatted = f"{total_revenue:,.0f} ₺"
 
-        # Lider Segment (En yüksek frekansa sahip grup)
         leading_segment = "Belirsiz"
         if 'segment' in df.columns:
-            leading_segment = df['segment'].value_counts().idxmax()
+            leading_segment = df['segment'].value_counts().idxmax().replace('_', ' ').title()
         
-        # --- Görselleştirme Hazırlığı (Frontend Formatı) ---
-        
-        # 1. Tablo Verisi: Ciroya göre top 100 müşteri
-        table_data = []
-        if 'monetary' in df.columns:
-            table_data = df.sort_values(by='monetary', ascending=False).head(100).to_dict('records')
-
-        # 2. Pasta Grafik Verisi: Segment dağılımı
+        # --- Segment Dağılımı (Mevcut) ---
         chart_labels = []
         chart_values = []
         if 'segment' in df.columns:
-            segment_counts = df['segment'].value_counts()
-            chart_labels = [label.replace('_', ' ').title() for label in segment_counts.index.tolist()]
-            chart_values = segment_counts.values.tolist()
+            counts = df['segment'].value_counts()
+            chart_labels = [l.replace('_', ' ').title() for l in counts.index]
+            chart_values = counts.values.tolist()
+
+        # --- Ciro Dağılımı (Soldaki Grafik - Aynı Kalıyor) ---
+        revenue_labels = []
+        revenue_values = []
+        if 'segment' in df.columns and 'monetary' in df.columns:
+            rev = df.groupby('segment')['monetary'].sum().sort_values(ascending=False)
+            revenue_labels = [str(l).replace('_', ' ').title() for l in rev.index]
+            revenue_values = rev.values.tolist()
+
+        # --- 4. YENİ: Segment Profilleri (4 ANA KÜME İÇİN) ---
+        # Burayı rfm_clustered.csv'den alıyoruz ki sadece 4 tane olsun.
+        avg_data = {"categories": [], "recency": [], "frequency": []}
+        
+        try:
+            df_cl = pd.read_csv(cluster_path)
+            df_cl.columns = df_cl.columns.str.lower()
+            
+            # İsimlendirme Sözlüğü (Senin standardın)
+            isimler = {
+                0: "Kayıp Müşteriler",
+                1: "VIP / Şampiyonlar",
+                2: "Yeni / Potansiyel",
+                3: "Sadık Müşteriler"
+            }
+            
+            # Kümeleri isimlendir
+            df_cl['grup_adi'] = df_cl['cluster'].map(isimler).fillna("Diğer")
+            
+            # Ortalamaları al
+            means = df_cl.groupby('grup_adi')[['recency', 'frequency']].mean().round(1)
+            
+            avg_data = {
+                "categories": means.index.tolist(),
+                "recency": means['recency'].tolist(),    # Çizgi Grafik (Sağ Eksen)
+                "frequency": means['frequency'].tolist() # Sütun Grafik (Sol Eksen)
+            }
+            
+        except Exception as e:
+            print(f"Cluster verisi okunamadı, eskiye dönülüyor: {e}")
 
         return {
             "sayi": total_customers,
             "skor": revenue_formatted,
             "isim": leading_segment,
-            "grafik_etiketleri": chart_labels,
-            "grafik_verileri": chart_values,
-            "tablo_verisi": table_data
+            "dagilim_etiketleri": chart_labels,
+            "dagilim_verileri": chart_values,
+            "ciro_etiketleri": revenue_labels,
+            "ciro_verileri": revenue_values,
+            "profil_verileri": avg_data 
         }
 
-    except FileNotFoundError:
-        print(f"HATA: 'customers_rfm.csv' dosyası belirtilen dizinde bulunamadı.")
-        return None
     except Exception as e:
         print(f"KRİTİK HATA (RFM Modülü): {e}")
         return None
 
-
 def get_kmeans_data():
     """
-    K-Means verisini hazırlar ama grafiği bozan AYKIRI DEĞERLERİ (Outliers) temizler.
+    K-Means verisini hazırlar.
+    1. Gerçek (Raw) verileri kullanır.
+    2. VIP'leri (Outlier) görsel netlik için filtreler.
+    3. Kümeleri isimlendirir ve standart renklerini atar.
     """
-    file_path = get_data_path('rfm_clustered.csv')
+    cluster_path = get_data_path('rfm_clustered.csv')
+    raw_path = get_data_path('customers_rfm.csv')
     
+    # --- 1. TANIMLAMALAR (İSİM ve RENK) ---
+    # Bu kısım visualization.py ile aynı olmalı ki tutarlılık sağlansın.
+    
+    # İsimlendirme Sözlüğü (Cluster ID -> Anlamlı İsim)
+    isimlendirme = {
+        0: "Kayıp Müşteriler",    # Riskli/Kötü durum
+        1: "VIP / Şampiyonlar",   # En iyiler
+        2: "Yeni / Potansiyel",   # Gelişime açık
+        3: "Sadık Müşteriler"     # İstikrarlı
+    }
+
+    # Renk Sözlüğü (Cluster ID -> Hex Kodu veya Renk İsmi)
+    # Renkleri segmentin ruhuna uygun seçtik.
+    renk_sozlugu = {
+        0: "#FF6347",  # Tomato (Kırmızımsı - Tehlike)
+        1: "#FFD700",  # Gold (Altın - Şampiyon)
+        2: "#87CEEB",  # SkyBlue (Mavi - Yeni/Umut)
+        3: "#32CD32"   # LimeGreen (Yeşil - Güvenli/Sadık)
+    }
+
     try:
-        df = pd.read_csv(file_path)
-        df.columns = df.columns.str.lower()
+        # --- 2. VERİ OKUMA VE BİRLEŞTİRME ---
+        df_cluster = pd.read_csv(cluster_path)
+        df_raw = pd.read_csv(raw_path)
         
+        df_cluster.columns = df_cluster.columns.str.lower()
+        df_raw.columns = df_raw.columns.str.lower()
+
+        # customer_id üzerinden gerçek veri ile küme bilgisini birleştir
+        cols_to_use = ['customer_id', 'cluster']
+        df_merged = pd.merge(df_raw, df_cluster[cols_to_use], on='customer_id', how='inner')
+
+        # --- 3. OUTLIER (BALİNA) TEMİZLİĞİ 🧹 ---
+        # Grafiğin sıkışmasını önlemek için en çok harcayan %5'i gizle.
+        esik_deger = df_merged['monetary'].quantile(0.98)
+        df_filtered = df_merged[df_merged['monetary'] < esik_deger]
+        
+        print(f"📊 Scatter Data: {len(df_merged)} -> {len(df_filtered)} nokta (VIP'ler filtrelendi)")
+
+        # --- 4. VERİYİ PAKETLEME (RENK DAHİL) ---
         series_data = []
-        cluster_col = 'cluster' # veya 'segment'
         
-        # --- OUTLIER TEMİZLİĞİ (GRAFİĞİ FERAHLATMAK İÇİN) ---
-        # Harcamanın %99'inden fazlasını yapanları grafiğe almıyoruz.
-        # Bu, grafiğin "zoom" yapmasını ve kümelerin ayrışmasını sağlar.
-        esik_deger = df['monetary'].quantile(0.99)
-        df_filtered = df[df['monetary'] < esik_deger] 
+        # Kümeler arasında döngü kur (0, 1, 2, 3)
+        unique_clusters = df_filtered['cluster'].unique()
         
-        if cluster_col in df_filtered.columns:
-            unique_clusters = sorted(df_filtered[cluster_col].unique())
+        for cluster_id in unique_clusters:
+            # O kümeye ait veriyi çek
+            grup_df = df_filtered[df_filtered['cluster'] == cluster_id]
             
-            for cluster_id in unique_clusters:
-                cluster_df = df_filtered[df_filtered[cluster_col] == cluster_id]
-                
-                # Her kümeden rastgele 50 kişi al (sample), head(50) değil!
-                # head() yaparsan sadece en tepedekileri alırsın, sample() karışık alır.
-                if len(cluster_df) > 50:
-                    sample_data = cluster_df[['monetary', 'frequency']].sample(50).values.tolist()
-                else:
-                    sample_data = cluster_df[['monetary', 'frequency']].values.tolist()
-                
-                series_data.append({
-                    "name": f"Segment {cluster_id}", 
-                    "data": sample_data
-                })
+            # Performans için nokta sayısını sınırla (Örn: 150)
+            if len(grup_df) > 150:
+                grup_df = grup_df.sample(150)
+            
+            # [Para, Sıklık] formatına getir
+            data_points = grup_df[['monetary', 'frequency']].values.tolist()
+            
+            # İsim ve Renk bilgilerini sözlüklerden çek
+            # .get() kullanıyoruz ki listede olmayan bir numara gelirse hata vermesin
+            grup_adi = isimlendirme.get(cluster_id, f"Küme {cluster_id}")
+            grup_rengi = renk_sozlugu.get(cluster_id, "#999999") # Bulamazsa gri yap
+
+            # ApexCharts'ın istediği format:
+            series_data.append({
+                "name": grup_adi,
+                "data": data_points,
+                "color": grup_rengi  # <--- RENK BİLGİSİNİ BURAYA EKLEDİK!
+            })
                 
         return series_data
 
     except Exception as e:
-        print(f"HATA: {e}")
+        print(f"❌ HATA (K-Means Data): {e}")
+        # Hata durumunda boş liste dön ki site çökmesin
         return []
                                     
 

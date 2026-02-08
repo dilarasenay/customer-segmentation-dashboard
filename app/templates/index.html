@@ -100,63 +100,29 @@
             </div>
         </div>
 
-        <div class="row mb-5">
-            <div class="col-12">
-                <div class="card border-light shadow">
-                    <div class="card-header bg-secondary text-white">
-                        <i class="fas fa-list me-2"></i>En Değerli 100 Müşteri (Top Revenue)
-                    </div>
-                    <div class="card-body">
-                        <table class="table table-hover table-striped" id="musteriTablosu">
-                            <thead>
-                                <tr>
-                                    <th>Müşteri ID</th>
-                                    <th>Segment</th>
-                                    <th>Segment (Raw)</th>
-                                    <th>Harcama (Monetary)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for musteri in tablo_verisi %}
-                                <tr>
-                                    <td>
-                                        <span class="badge bg-light text-dark border">
-                                            #{{ 24000 + loop.index }}
-                                        </span>
-                                    </td>
-                                    
-                                    <td>
-                                        {% set seg = musteri.segment | lower %}
-                                        {% if 'champion' in seg or 'loyal' in seg %}
-                                            <span class="badge bg-success">
-                                                {{ musteri.segment.replace('_', ' ').title() }}
-                                            </span>
-                                        {% elif 'risk' in seg or 'lost' in seg or 'cant_loose' in seg %}
-                                            <span class="badge bg-danger">
-                                                {{ musteri.segment.replace('_', ' ').title() }}
-                                            </span>
-                                        {% else %}
-                                            <span class="badge bg-info">
-                                                {{ musteri.segment.replace('_', ' ').title() }}
-                                            </span>
-                                        {% endif %}
-                                    </td>
-                                    
-                                    <td class="text-muted small">
-                                        {{ musteri.segment.replace('_', ' ').title() }}
-                                    </td>
-                                    
-                                    <td class="fw-bold text-success">{{ musteri.monetary }} ₺</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+    <div class="row mb-5">
+    <div class="col-lg-6">
+        <div class="card border-light shadow h-100">
+            <div class="card-header bg-dark text-white">
+                <i class="fas fa-wallet me-2"></i>Segmentlerin Ciro Katkısı
+            </div>
+            <div class="card-body">
+                <div id="revenueChart" style="min-height: 350px;"></div>
             </div>
         </div>
-
     </div>
+
+    <div class="col-lg-6">
+        <div class="card border-light shadow h-100">
+            <div class="card-header bg-dark text-white">
+                <i class="fas fa-sliders-h me-2"></i>Segment Davranış Profili (Ortalamalar)
+            </div>
+            <div class="card-body">
+                <div id="profileChart" style="min-height: 350px;"></div>
+            </div>
+        </div>
+    </div>
+</div>    
 
     <div class="modal fade" id="predictionModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -218,9 +184,8 @@
         const scatterSeries = {{ scatter_verisi | tojson }};
         
         // 2. RFM Verisi (Treemap için)
-        const treemapLabels = {{ grafik_etiketleri | tojson }};
-        const treemapValues = {{ grafik_verileri | tojson }};
-
+        const treemapLabels = {{ dagilim_etiketleri | tojson }};       
+        const treemapValues = {{ dagilim_verileri | tojson }};    
         // --- B. K-MEANS GRAFİĞİ (SCATTER PLOT) AYARLARI ---
         var scatterOptions = {
             series: scatterSeries, // Python'dan gelen veri buraya giriyor
@@ -322,14 +287,6 @@
         // Grafiği çizdir
         new ApexCharts(document.querySelector("#rfmChart"), treemapOptions).render();
 
-        // --- D. TABLO AYARLARI (DATATABLES) ---
-        $(document).ready(function () {
-            $('#musteriTablosu').DataTable({
-                "language": { "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/tr.json" }, // Türkçe
-                "pageLength": 10, // Sayfada 10 satır göster
-                "dom": '<"row"<"col-sm-12 col-md-6"f><"col-sm-12 col-md-6"p>>t' // Sadece Arama ve Sayfalama
-            });
-        });
 
         // --- E. TAHMİN FONKSİYONU (AI PREDICTION) ---
         function makePrediction() {
@@ -378,6 +335,130 @@
                 alert("Sunucuyla iletişim hatası!");
             });
         }
+
+        // --- YENİ VERİLERİ AL (PYTHON -> JS) ---
+        const revenueLabels = {{ ciro_etiketleri | tojson }};
+        const revenueValues = {{ ciro_verileri | tojson }};
+        const profileData = {{ profil_verileri | tojson }};
+
+        // --- 1. CİRO GRAFİĞİ (HORIZONTAL BAR) ---
+        var revenueOptions = {
+            series: [{
+                name: 'Toplam Ciro',
+                data: revenueValues
+            }],
+            chart: {
+                type: 'bar',
+                height: 350,
+                toolbar: { show: false }
+            },
+            plotOptions: {
+                bar: {
+                    borderRadius: 4,
+                    horizontal: true, // Yatay çubuklar okumayı kolaylaştırır
+                    distributed: true // Her çubuk farklı renk olsun
+                }
+            },
+            colors: ['#33b2df', '#546E7A', '#d4526e', '#13d8aa', '#A5978B'], // Renk paleti
+            dataLabels: {
+                enabled: true,
+                textAnchor: 'start',
+                formatter: function (val) {
+                    return val.toLocaleString('tr-TR') + " ₺"; // Binlik ayracı ve TL simgesi
+                },
+                style: { colors: ['#fff'] }
+            },
+            xaxis: {
+                categories: revenueLabels,
+                labels: {
+                    style: { colors: '#fff' },
+                    formatter: function (val) { return (val / 1000).toFixed(0) + "K"; } // Binlik kısaltma
+                }
+            },
+            yaxis: {
+                labels: { style: { colors: '#fff' } }
+            },
+            tooltip: {
+                theme: 'dark',
+                y: {
+                    formatter: function (val) { return val.toLocaleString('tr-TR') + " ₺"; }
+                }
+            },
+            title: {
+                text: 'Hangi Segment Kasayı Dolduruyor?',
+                align: 'center',
+                style: { color: '#bbb' }
+            }
+        };
+        new ApexCharts(document.querySelector("#revenueChart"), revenueOptions).render();
+
+
+// --- 2. PROFİL GRAFİĞİ (GÜNCELLENMİŞ - DUAL AXIS) ---
+        var profileOptions = {
+            series: [{
+                name: 'Alışveriş Sıklığı (Frequency)',
+                type: 'column', // Sütun Grafik
+                data: profileData.frequency
+            }, {
+                name: 'Yenilik (Recency - Gün)',
+                type: 'line',   // Çizgi Grafik
+                data: profileData.recency
+            }],
+            chart: {
+                height: 350,
+                type: 'line', // Ana tip line olmalı ki mix yapabilelim
+                toolbar: { show: false }
+            },
+            stroke: {
+                width: [0, 4], // Sütunun kenarlığı 0, Çizginin kalınlığı 4
+                curve: 'smooth' // Çizgi yumuşak dönsün
+            },
+            title: {
+                text: 'Segment Karakteristiği (Sıklık vs Geçen Gün)',
+                align: 'center',
+                style: { color: '#bbb' } 
+            },
+            dataLabels: {
+                enabled: true,
+                enabledOnSeries: [1], // Sadece çizginin üzerinde rakam yazsın
+                style: { colors: ['#fff'] }
+            },
+            labels: profileData.categories, // 4 Ana Küme İsmi
+            xaxis: {
+                labels: { style: { colors: '#fff' } }
+            },
+            yaxis: [{
+                // SOL EKSEN (Frequency)
+                title: { 
+                    text: 'Ortalama Alışveriş Adedi',
+                    style: { color: '#00E396' } 
+                },
+                labels: { 
+                    style: { colors: '#00E396' },
+                    formatter: function(val) { return val.toFixed(1); }
+                }
+            }, {
+                // SAĞ EKSEN (Recency)
+                opposite: true, // Sağa yasla
+                title: { 
+                    text: 'Son Görülme (Gün)', 
+                    style: { color: '#FEB019' } 
+                },
+                labels: { 
+                    style: { colors: '#FEB019' },
+                    formatter: function(val) { return val.toFixed(0); }
+                }
+            }],
+            colors: ['#00E396', '#FEB019'], // Yeşil Sütun, Turuncu Çizgi
+            legend: {
+                labels: { colors: '#fff' }
+            },
+            tooltip: {
+                theme: 'dark'
+            }
+        };
+        new ApexCharts(document.querySelector("#profileChart"), profileOptions).render();
+
 
     </script>
 
