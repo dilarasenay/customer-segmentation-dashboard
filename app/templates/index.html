@@ -26,9 +26,6 @@
             <a class="navbar-brand" href="#">
                 <i class="fas fa-chart-line me-2"></i>Müşteri Segmentasyon Paneli
             </a>
-            <span class="navbar-text text-white">
-                Hackathon 2026 | Veri Bilimi Ekibi
-            </span>
         </div>
     </nav>
 
@@ -79,8 +76,7 @@
             <div class="col-lg-8">
                 <div class="card border-light mb-4 shadow">
                     <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                        <span><i class="fas fa-project-diagram me-2"></i>Müşteri Kümeleri (K-Means AI)</span>
-                        <span class="badge bg-danger">Yapay Zeka</span>
+                        <span><i class="fas fa-project-diagram me-2"></i>Müşteri Kümeleri</span>
                     </div>
                     <div class="card-body">
                         <div id="kmeansChart" style="min-height: 400px;"></div>
@@ -100,14 +96,15 @@
             </div>
         </div>
 
-    <div class="row mb-5">
+        <div class="row mb-5">
+    
     <div class="col-lg-6">
         <div class="card border-light shadow h-100">
             <div class="card-header bg-dark text-white">
-                <i class="fas fa-wallet me-2"></i>Segmentlerin Ciro Katkısı
+                <i class="fas fa-box-open me-2"></i>Segment Harcama Dağılımı
             </div>
             <div class="card-body">
-                <div id="revenueChart" style="min-height: 350px;"></div>
+                <div id="boxPlotChart" style="min-height: 400px;"></div>
             </div>
         </div>
     </div>
@@ -115,7 +112,34 @@
     <div class="col-lg-6">
         <div class="card border-light shadow h-100">
             <div class="card-header bg-dark text-white">
-                <i class="fas fa-sliders-h me-2"></i>Segment Davranış Profili (Ortalamalar)
+                <i class="fas fa-chart-pie me-2"></i>Müşteri Segment Dağılımı
+            </div>
+            <div class="card-body">
+                <div id="segmentPieChart" style="min-height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card border-light mb-4 shadow">
+                    <div class="card-header bg-dark text-white">
+                        <i class="fas fa-chart-bar me-2"></i>Segment Bazında Ciro Analizi
+                    </div>
+                    <div class="card-body">
+                        <div id="revenueChart" style="min-height: 400px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+    <div class="row mb-5">
+    <div class="col-12">
+        <div class="card border-light shadow">
+            <div class="card-header bg-dark text-white">
+                <i class="fas fa-sliders-h me-2"></i>Segment Davranış Profili (Sıklık vs Gün)
             </div>
             <div class="card-body">
                 <div id="profileChart" style="min-height: 350px;"></div>
@@ -123,6 +147,9 @@
         </div>
     </div>
 </div>    
+
+</div>
+
 
     <div class="modal fade" id="predictionModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -404,11 +431,23 @@
                 type: 'line',   // Çizgi Grafik
                 data: profileData.recency
             }],
-            chart: {
-                height: 350,
-                type: 'line', // Ana tip line olmalı ki mix yapabilelim
-                toolbar: { show: false }
-            },
+            chart: { 
+                    height: 350, 
+                    type: 'line', 
+                    // --- ZOOM TUŞLARINI BURASI AÇAR ---
+                    toolbar: { 
+                        show: true, // Araç çubuğunu göster
+                        tools: {
+                            download: true, // İndirme butonu
+                            selection: true,
+                            zoom: true,     // Yakınlaştırma butonu
+                            zoomin: true,   // + butonu
+                            zoomout: true,  // - butonu
+                            pan: true,      // El simgesi (kaydırma)
+                            reset: true     // Evi simgesi (sıfırlama)
+                        }
+                    }
+                },
             stroke: {
                 width: [0, 4], // Sütunun kenarlığı 0, Çizginin kalınlığı 4
                 curve: 'smooth' // Çizgi yumuşak dönsün
@@ -458,6 +497,86 @@
             }
         };
         new ApexCharts(document.querySelector("#profileChart"), profileOptions).render();
+
+        // --- 1. SOL ALT GRAFİK: BOX PLOT ---
+        var boxData = {{ boxplot_verisi | default([]) | tojson }};
+
+        if (document.querySelector("#boxPlotChart") && boxData.length > 0) {
+            var boxOptions = {
+                series: [{
+                    name: 'Harcama Aralığı',
+                    data: boxData
+                }],
+                chart: {
+                    type: 'boxPlot',
+                    height: 400,
+                    toolbar: {show: true}
+                },
+                // Neon Renkler
+                colors: ['#00E396', '#FEB019', '#FF4560', '#775DD0', '#008FFB'],
+                title: {
+                    text: 'Harcama Analizi (Aykırı Değerler)',
+                    align: 'center',
+                    style: { color: '#bbb' }
+                },
+                xaxis: {
+                    labels: { style: { colors: '#fff' } }
+                },
+                yaxis: {
+                    forceNiceScale: true, // Boşluk sorununu çözer
+                    labels: { 
+                        style: { colors: '#fff' },
+                        formatter: function(val) { return val.toLocaleString() + " ₺"; }
+                    }
+                },
+                plotOptions: {
+                    boxPlot: {
+                        colors: {
+                            upper: '#2E93fA',
+                            lower: '#66DA26'
+                        },
+                        median: { show: true, color: '#FFD700', width: 2 }
+                    }
+                },
+                grid: {
+                    borderColor: '#404040'
+                },
+                tooltip: { theme: 'dark' }
+            };
+            new ApexCharts(document.querySelector("#boxPlotChart"), boxOptions).render();
+        }
+
+        // --- 2. SAĞ ALT GRAFİK: PASTA (4 SEGMENT) ---
+        var yeniPieLabels = {{ pasta_etiketleri | default([]) | tojson }};
+        var yeniPieValues = {{ pasta_verileri | default([]) | tojson }};
+
+        if (document.querySelector("#segmentPieChart") && yeniPieValues.length > 0) {
+            var pieOptions = {
+                series: yeniPieValues,
+                labels: yeniPieLabels,
+                chart: {
+                    type: 'donut',
+                    height: 400
+                },
+                // RENKLER: Kayıp(Kırmızı), VIP(Sarı), Yeni(Mavi), Sadık(Yeşil)
+                colors: ['#ff6347', '#ffd700', '#87ceeb', '#32cd32'],
+                title: {
+                    text: 'Ana Segment Dağılımı',
+                    align: 'center',
+                    style: { color: '#bbb' }
+                },
+                legend: {
+                    position: 'bottom',
+                    labels: { colors: '#fff' }
+                },
+                stroke: { show: false },
+                dataLabels: {
+                    style: { fontSize: '14px' }
+                },
+                tooltip: { theme: 'dark' }
+            };
+            new ApexCharts(document.querySelector("#segmentPieChart"), pieOptions).render();
+        }
 
 
     </script>

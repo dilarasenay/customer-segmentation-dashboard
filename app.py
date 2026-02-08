@@ -4,6 +4,8 @@ from flask import Flask, render_template, request, jsonify
 import joblib # Modelleri okumak için 
 import numpy as np 
 
+# --- SABİT AYARLAR ---
+ISIMLER = { 0: "Kayıp Müşteriler", 1: "VIP / Şampiyonlar", 2: "Yeni / Potansiyel", 3: "Sadık Müşteriler" }
 
 app = Flask(__name__, 
             template_folder='app/templates', 
@@ -58,13 +60,17 @@ def get_rfm_data():
             chart_labels = [l.replace('_', ' ').title() for l in counts.index]
             chart_values = counts.values.tolist()
 
-        # --- Ciro Dağılımı (Soldaki Grafik - Aynı Kalıyor) ---
-        revenue_labels = []
-        revenue_values = []
+        # --- EKLENEN KISIM: Ciro Dağılımı ---
+        ciro_etiketleri = []
+        ciro_verileri = []
+        
         if 'segment' in df.columns and 'monetary' in df.columns:
-            rev = df.groupby('segment')['monetary'].sum().sort_values(ascending=False)
-            revenue_labels = [str(l).replace('_', ' ').title() for l in rev.index]
-            revenue_values = rev.values.tolist()
+            # Segmentlere göre parayı topla ve sırala
+            gelir_grubu = df.groupby('segment')['monetary'].sum().sort_values(ascending=False)
+            
+            # Etiketleri düzelt (loyal_customers -> Loyal Customers)
+            ciro_etiketleri = [str(x).replace('_', ' ').title() for x in gelir_grubu.index]
+            ciro_verileri = gelir_grubu.values.tolist()
 
         # --- 4. YENİ: Segment Profilleri (4 ANA KÜME İÇİN) ---
         # Burayı rfm_clustered.csv'den alıyoruz ki sadece 4 tane olsun.
@@ -94,8 +100,54 @@ def get_rfm_data():
                 "frequency": means['frequency'].tolist() # Sütun Grafik (Sol Eksen)
             }
             
+            
+
         except Exception as e:
             print(f"Cluster verisi okunamadı, eskiye dönülüyor: {e}")
+
+        # --- EKLENEN KISIM: Box Plot (Harcama Dağılımı) ---
+        boxplot_verisi = []
+        if 'segment' in df.columns and 'monetary' in df.columns:
+            for seg in df['segment'].unique():
+                seg_data = df[df['segment'] == seg]['monetary']
+                
+                # İstatistikleri Çıkar (Aykırı değerleri biraz tıraşlıyoruz ki kutu görünsün)
+                # Bıyıklar: %5 (Alt) ve %95 (Üst) sınırları
+                # Kutu: %25 (Q1) ve %75 (Q3) sınırları
+                boxplot_verisi.append({
+                    'x': str(seg).replace('_', ' ').title(),
+                    'y': [
+                        seg_data.quantile(0.05), # Min (Alt Bıyık)
+                        seg_data.quantile(0.25), # Q1 (Kutu Altı)
+                        seg_data.median(),       # Medyan (Çizgi)
+                        seg_data.quantile(0.75), # Q3 (Kutu Üstü)
+                        seg_data.quantile(0.95)  # Max (Üst Bıyık)
+                    ]
+                })
+
+        # --- YENİ: 4'lü Segment Pasta Grafiği İçin Veri ---
+        # Burası senin dosyanın içinde olmayan kısım, bunu ekliyoruz.
+        pie_labels = []
+        pie_values = []
+        
+        # rfm_clustered.csv dosyasını okuyoruz (4 Küme burada var)
+        cluster_path = get_data_path('rfm_clustered.csv')
+        
+        try:
+            if os.path.exists(cluster_path):
+                df_cl = pd.read_csv(cluster_path)
+                
+                # İsimlendirme Sözlüğü (Renklerin karışmaması için)
+                isimler = {0: "Kayıp Müşteriler", 1: "VIP / Şampiyonlar", 2: "Yeni / Potansiyel", 3: "Sadık Müşteriler"}
+                
+                # Cluster numarasına göre (0, 1, 2, 3) gruplayıp sayıyoruz
+                counts = df_cl.groupby('cluster').size()
+                
+                # Etiketleri ve sayıları listeye çeviriyoruz
+                pie_labels = [isimler.get(i, f"Küme {i}") for i in counts.index]
+                pie_values = counts.values.tolist()
+        except Exception as e:
+            print(f"Pasta Grafik Hatası: {e}")        
 
         return {
             "sayi": total_customers,
@@ -103,9 +155,12 @@ def get_rfm_data():
             "isim": leading_segment,
             "dagilim_etiketleri": chart_labels,
             "dagilim_verileri": chart_values,
-            "ciro_etiketleri": revenue_labels,
-            "ciro_verileri": revenue_values,
-            "profil_verileri": avg_data 
+            "ciro_etiketleri": ciro_etiketleri,
+            "ciro_verileri": ciro_verileri,
+            "profil_verileri": avg_data,
+            "boxplot_verisi": boxplot_verisi,
+            "pasta_etiketleri": pie_labels,
+            "pasta_verileri": pie_values
         }
 
     except Exception as e:
