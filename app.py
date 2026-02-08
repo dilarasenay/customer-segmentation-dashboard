@@ -5,8 +5,9 @@ import joblib # Modelleri okumak için
 import numpy as np 
 
 
-app = Flask(__name__)
-
+app = Flask(__name__, 
+            template_folder='app/templates', 
+            static_folder='app/static')
 # ==========================================
 # 1. HELPER FUNCTIONS (YARDIMCI FONKSİYONLAR)
 # ==========================================
@@ -101,9 +102,9 @@ def get_kmeans_data():
         cluster_col = 'cluster' # veya 'segment'
         
         # --- OUTLIER TEMİZLİĞİ (GRAFİĞİ FERAHLATMAK İÇİN) ---
-        # Harcamanın %95'inden fazlasını yapanları grafiğe almıyoruz.
+        # Harcamanın %99'inden fazlasını yapanları grafiğe almıyoruz.
         # Bu, grafiğin "zoom" yapmasını ve kümelerin ayrışmasını sağlar.
-        esik_deger = df['monetary'].quantile(0.95)
+        esik_deger = df['monetary'].quantile(0.99)
         df_filtered = df[df['monetary'] < esik_deger] 
         
         if cluster_col in df_filtered.columns:
