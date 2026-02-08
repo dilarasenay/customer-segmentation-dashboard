@@ -67,7 +67,7 @@ def get_rfm_data():
         chart_values = []
         if 'segment' in df.columns:
             segment_counts = df['segment'].value_counts()
-            chart_labels = segment_counts.index.tolist()
+            chart_labels = [label.replace('_', ' ').title() for label in segment_counts.index.tolist()]
             chart_values = segment_counts.values.tolist()
 
         return {

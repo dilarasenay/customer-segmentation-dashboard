@@ -1,63 +1,90 @@
-# Veri işleme için pandas kütüphanesini ekledim
+# ======================================================
+# CUSTOMER SEGMENTATION - MODEL TRAINING PIPELINE
+# Bu scriptte:
+# - scaled RFM verisi ile KMeans modeli eğitiyorum
+# - oluşan cluster'ları original RFM verisine yazıyorum
+# - modeli .pkl olarak kaydediyorum
+# - dashboard için clustered veri export ediyorum
+# ======================================================
+
+
+# -------------------------------
+# Gerekli kütüphaneleri ekledim
+# -------------------------------
 import pandas as pd
-
-# KMeans algoritmasını kullanmak için sklearn içinden import ettim
 from sklearn.cluster import KMeans
-
-# Önceden feature scaling yapılmış RFM verisinin bulunduğu dosya yolu
-data_path = "data/processed/rfm_scaled.csv"
-
-# CSV dosyasını okuyarak dataframe'e aktardım
-df = pd.read_csv(data_path)
-
-# Kontrol amaçlı verinin başarıyla okunup okunmadığını terminale yazdırıyorum
-print("Veri başarıyla okundu ")
-
-# Model eğitiminde sadece RFM feature'larını kullanacağım için ilgili kolonları seçtim
-X = df[["recency", "frequency", "monetary"]]
-
-# 4 segment oluşturacak şekilde KMeans modelini oluşturdum
-# random_state=42 verilebilirlik (reproducibility) için eklendi
-kmeans = KMeans(n_clusters=4, random_state=42)
-
-# Seçtiğim RFM feature'ları ile modeli eğittim
-kmeans.fit(X)
-
-# Modelin başarıyla eğitildiğini görmek için çıktı veriyorum
-print("KMeans modeli eğitildi ")
-
-# Eğitilmiş model ile her müşterinin ait olduğu cluster'ı tahmin ettim
-df["cluster"] = kmeans.predict(X)
-
-# Cluster kolonunun başarıyla eklendiğini kontrol amaçlı yazdırıyorum
-print("Cluster kolonu eklendi ")
-print(df.head())
-
-# Modeli kaydetmek için joblib kütüphanesini ekledim
 import joblib
 
-# Eğitilmiş KMeans modelini daha sonra dashboard içinde kullanabilmek için kaydedeceğim dosya yolu
-model_path = "models/kmeans_model.pkl"
 
-# Eğitilmiş modeli .pkl formatında kaydettim
+# --------------------------------------------------
+# 1️⃣ Veri setlerini okudum
+# scaled veri → model eğitimi için
+# original veri → dashboard için gerçek değerler
+# --------------------------------------------------
+df_scaled = pd.read_csv("data/processed/rfm_scaled.csv")
+df_original = pd.read_csv("data/processed/customers_rfm.csv")
+
+print("Veriler başarıyla okundu")
+
+
+# --------------------------------------------------
+# 2️⃣ Model eğitiminde kullanacağım feature'ları seçtim
+# sadece RFM kolonlarını kullanıyorum
+# --------------------------------------------------
+X = df_scaled[["recency", "frequency", "monetary"]]
+
+
+# --------------------------------------------------
+# 3️⃣ KMeans modelini oluşturdum
+# 4 cluster → 4 müşteri segmenti
+# random_state → aynı sonucu üretmesi için
+# --------------------------------------------------
+kmeans = KMeans(n_clusters=4, random_state=42)
+
+
+# --------------------------------------------------
+# 4️⃣ Modeli eğittim
+# --------------------------------------------------
+kmeans.fit(X)
+
+print("KMeans modeli eğitildi")
+
+
+# --------------------------------------------------
+# 5️⃣ Cluster tahminlerini aldım
+# scaled veri ile tahmin yapıyorum
+# sonucu original dataframe'e yazıyorum
+# çünkü dashboard gerçek değerleri gösterecek
+# --------------------------------------------------
+df_original["cluster"] = kmeans.predict(X)
+
+print("Cluster kolonu original veriye eklendi")
+print(df_original.head())
+
+
+# --------------------------------------------------
+# 6️⃣ Eğitilmiş modeli kaydettim
+# dashboard veya API tarafında tekrar kullanılacak
+# --------------------------------------------------
+model_path = "models/kmeans_model.pkl"
 joblib.dump(kmeans, model_path)
 
-# Modelin başarıyla kaydedildiğini belirten çıktı
-print("KMeans modeli kaydedildi ")
-
-# Cluster bilgisi eklenmiş son veriyi kaydedeceğim dosya yolu
-output_path = "data/processed/rfm_clustered.csv"
-
-# Cluster eklenmiş dataframe'i CSV olarak kaydettim
-df.to_csv(output_path, index=False)
-
-# Clustered verinin başarıyla kaydedildiğini belirten çıktı
-print("Clustered veri kaydedildi ")
+print("KMeans modeli kaydedildi")
 
 
+# --------------------------------------------------
+# 7️⃣ Cluster ortalamalarını analiz etmek için
+# groupby ile ortalama RFM değerlerini aldım
+# --------------------------------------------------
 print("\nCluster Ortalamaları:")
-print(df.groupby("cluster")[["recency", "frequency", "monetary"]].mean())
+print(
+    df_original.groupby("cluster")[["recency", "frequency", "monetary"]].mean()
+)
 
+
+# --------------------------------------------------
+# 8️⃣ Cluster numaralarını iş anlamlı segmentlere çevirdim
+# --------------------------------------------------
 cluster_map = {
     0: "Lost Customers",
     1: "VIP Customers",
@@ -65,16 +92,16 @@ cluster_map = {
     3: "Loyal Customers"
 }
 
-df["segment"] = df["cluster"].map(cluster_map)
+df_original["segment"] = df_original["cluster"].map(cluster_map)
 
-# clusterları iş anlamlı segmentlere dönüştürdüm
-cluster_map = {
-    0: "Lost Customers",
-    1: "VIP Customers",
-    2: "New Customers",
-    3: "Loyal Customers"
-}
+print("Segment kolonu eklendi")
 
-df["segment"] = df["cluster"].map(cluster_map)
 
-print("Segment kolonu eklendi ")
+# --------------------------------------------------
+# 9️⃣ Dashboard için clustered veriyi export ettim
+# --------------------------------------------------
+output_path = "data/processed/rfm_clustered.csv"
+df_original.to_csv(output_path, index=False)
+
+print("Clustered veri kaydedildi")
+print("Pipeline tamamlandı ")

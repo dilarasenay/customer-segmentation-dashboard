@@ -8,3 +8,5 @@ scikit-learn
 # Model ve Scaler kaydetme
 joblib
 
+# Web framework
+Flask
