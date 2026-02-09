@@ -317,35 +317,30 @@ def index():
 
 # API Endpoint: Tahmin Yap (POST /api/predict)
 @app.route('/api/predict', methods=['POST'])
-def predict_segment():
-    """
-    Frontend'den gelen veriyi alır, Joblib modelleriyle tahmin yapar.
-    """
-    # Global modelleri kontrol et
-    if not kmeans_model or not scaler_model:
+def predict():
+    if not kmeans_model:
         return jsonify({'success': False, 'error': 'Modeller sunucuda yüklü değil!'}), 500
 
     try:
-        # 1. Veriyi al
         data = request.json
-        
-        # 2. Değerleri hazırla
+        # Gelen verileri float'a çeviriyoruz
         recency = float(data.get('recency'))
         frequency = float(data.get('frequency'))
         monetary = float(data.get('monetary'))
         
-        # 3. Model formatına çevir (2 Boyutlu array)
-        # Scaler beklediği için önce ölçeklendiriyoruz
+        # Tahmin işlemi
         input_data = np.array([[recency, frequency, monetary]])
         input_scaled = scaler_model.transform(input_data)
+        cluster_id = int(kmeans_model.predict(input_scaled)[0])
         
-        # 4. Tahmin yap
-        cluster_id = kmeans_model.predict(input_scaled)[0]
+        # --- BURASI YENİ: Sözlükten ismi çekiyoruz ---
+        # app.py'ın başında tanımladığın ISIMLER sözlüğünü kullanır
+        segment_adi = ISIMLER.get(cluster_id, f"Segment {cluster_id}")
         
-        # 5. Cevabı gönder
         return jsonify({
             'success': True,
-            'cluster': int(cluster_id)
+            'cluster': cluster_id,
+            'segment_name': segment_adi # JavaScript'e ismi gönderiyoruz
         })
 
     except Exception as e:

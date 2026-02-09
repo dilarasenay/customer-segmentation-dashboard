@@ -340,7 +340,6 @@
             })
             .then(response => response.json())
             .then(data => {
-                // 3. Sonucu Göster
                 const resultArea = document.getElementById('resultArea');
                 const resultTitle = document.getElementById('resultTitle');
                 
@@ -348,13 +347,13 @@
                     resultArea.classList.remove('d-none', 'alert-danger');
                     resultArea.classList.add('alert-success');
                     
-                    // Küme ID'sini göster
-                    resultTitle.innerText = `Müşteri Segmenti: ${data.cluster}`;
+                    // --- BURASI GÜNCELLENDİ: ID yerine Python'dan gelen segment_name yazılıyor ---
+                    resultTitle.innerText = "Müşteri Segmenti: " + data.segment_name;
                     
-                    // İstersen buraya "Segment 0 = VIP" gibi bir açıklama da ekleyebiliriz
-                    // document.getElementById('resultText').innerText = "Bu müşteri sadık kitlesinde!";
                 } else {
-                    alert("Hata oluştu: " + data.error);
+                    resultArea.classList.remove('d-none', 'alert-success');
+                    resultArea.classList.add('alert-danger');
+                    resultTitle.innerText = "Hata: " + data.error;
                 }
             })
             .catch(error => {
