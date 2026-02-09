@@ -526,7 +526,10 @@
                 },
                 yaxis: {
                     labels: {
-                        style: { colors: '#ffffff' } // Yan eksen (Paralar) beyaz
+                        style: { colors: '#ffffff' }, // Mevcut stil ayarın
+                        formatter: function (value) {
+                            return Math.floor(value); // Sayıyı aşağı yuvarlar ve ondalıkları atar
+                        }
                     }
                 },
                 plotOptions: {
